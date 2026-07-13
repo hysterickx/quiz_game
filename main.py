@@ -8,6 +8,8 @@ class StaticPages(ctk.CTkFrame):
     def __init__(self, master, controller, page_name):
         super().__init__(master, fg_color=cfg.COLOR_DARK)
 
+        self.controller = controller
+        self.page_name = page_name
         page_config = cfg.STATIC_PAGES_DATA[page_name]
 
         label_data = page_config['labels']
@@ -25,14 +27,16 @@ class StaticPages(ctk.CTkFrame):
             button = ctk.CTkButton(
                 self,
                 text=text,
-                command=partial(
-                    controller.handle_info,
-                    page_name,
-                    info
-                ),
+                command=partial(self.send_info, info),
                 **cfg.BTN_PARAMS
             )
             button.place(relx=relx, rely=rely, anchor='c')
+
+    def send_info(self, info):
+        self.controller.handle_info(
+            self.page_name, info
+        )
+
 
 class QuizPage(ctk.CTkFrame):
     def __init__(self, master, controller, page_name=None):
@@ -85,29 +89,29 @@ class QuizPage(ctk.CTkFrame):
             box.pack(pady = 10, anchor='c')
             self.boxes.append(box)
 
-        self.buttons = {}
-        button_data = cfg.QUIZ_PAGE_DATA['buttons']
-        for name, text, info in button_data:
-            button = ctk.CTkButton(
-                self,
-                text=text,
-                command=partial(self.send_info, info),
-                **cfg.BTN_PARAMS
-            )
-            self.buttons[name] = button
-
-    def send_info(self, info):
-        self.controller.handle_info(
-            'QuizPage', info, self.choice_var.get()
+        self.button = ctk.CTkButton(
+            self,
+            text='Далее',
+            command=self.send_info,
+            **cfg.BTN_PARAMS
         )
 
-    def show_verdict(self, status, index):
-        self.buttons['back_btn'].place_forget()
-        self.buttons['next_btn'].place_forget()
+    def send_info(self):
+        self.controller.handle_info(
+            'QuizPage', self.choice_var.get()
+        )
 
-        current_q = cfg.GAME_DATA[index-1]
-        correct_text = current_q['answers'][current_q['right_answer']]
-        self.labels['comment_lbl'].configure(text=f'{choice(cfg.GAME_MESSAGES[status])} {correct_text}')
+    def show_feedback(self, status, index):
+        self.button.place_forget()
+
+        part = cfg.GAME_DATA[index-1]
+        answer = part['answers'][part['right_answer']]
+        self.labels['comment_lbl'].configure(
+            text=f'{choice(cfg.GAME_MESSAGES[status])} {answer}'
+        )
+
+        for box in self.boxes:
+            box.configure(state='disabled')
 
         wrong_box = self.boxes[self.choice_var.get()]
         wrong_box.configure(
@@ -115,22 +119,23 @@ class QuizPage(ctk.CTkFrame):
             fg_color=cfg.COLOR_RED,
             border_width_unchecked=5
         )
-
-        correct_box = self.boxes[current_q['right_answer']]
-        correct_box.configure(
+        right_box = self.boxes[part['right_answer']]
+        right_box.configure(
             border_color=cfg.COLOR_LIME,
             fg_color=cfg.COLOR_LIME,
             border_width_unchecked=5
         )
 
-        for box in self.boxes:
-            box.configure(state='disabled')
-
-    def update_ui(self, status, index, step, score):
-        print(status, index, step, score)
-        self.labels['step_lbl'].configure(text=f'Вопрос номер: {step}')
-        self.labels['score_lbl'].configure(text=f'Твои баллы: {score}')
-        self.question_lbl.configure(text=cfg.GAME_DATA[index]['question'])
+    def show_next_question(self, index, score):
+        self.labels['step_lbl'].configure(
+            text=f'Вопрос номер: {index+1}'
+        )
+        self.labels['score_lbl'].configure(
+            text=f'Твои баллы: {score}'
+        )
+        self.question_lbl.configure(
+            text=cfg.GAME_DATA[index]['question']
+        )
         self.labels['comment_lbl'].configure(text='')
         answers_list = cfg.GAME_DATA[index]['answers']
         for idx, box in enumerate(self.boxes):
@@ -140,21 +145,46 @@ class QuizPage(ctk.CTkFrame):
                 **cfg.BOX_PARAMS
             )
         self.choice_var.set(0)
-        self.buttons['back_btn'].place(relx=0.35, rely=0.9, anchor='c')
-        self.buttons['next_btn'].place(relx=0.65, rely=0.9, anchor='c')
+        self.button.place(relx=0.5, rely=0.9, anchor='c')
 
 
 class FinalPage(ctk.CTkFrame):
     def __init__(self, master, controller, page_name=None):
         super().__init__(master, fg_color=cfg.COLOR_DARK)
 
-        self.message_lbl = ctk.CTkLabel(
-            self,
-            text='SSS',
-            text_color=cfg.COLOR_LIME,
-            font=cfg.FONT_LARGE
+        self.controller = controller
+
+        self.labels = {}
+        label_data = cfg.FINAL_PAGE_DATA['labels']
+        for name, text, color, font, relx, rely in label_data:
+            label = ctk.CTkLabel(
+                self,
+                text=text,
+                font=font,
+                text_color=color
+            )
+            label.place(relx=relx, rely=rely, anchor='c')
+            self.labels[name] = label
+
+        button_data = cfg.FINAL_PAGE_DATA['buttons']
+        for text, info, relx, rely in button_data:
+            button = ctk.CTkButton(
+                self,
+                text=text,
+                command=partial(self.send_info, info),
+                **cfg.BTN_PARAMS
+            )
+            button.place(relx=relx, rely=rely, anchor='c')
+
+    def send_info(self, info):
+        self.controller.handle_info(
+            'FinalPage', info
         )
-        self.message_lbl.place(relx=0.5, rely=0.5, anchor='c')
+
+    def change_message(self, score):
+        self.labels['score_lbl'].configure(
+            text=f'Ты набрал {score} баллов из 5!'
+        )
 
 
 class MessagePage(ctk.CTkFrame):
@@ -167,7 +197,9 @@ class MessagePage(ctk.CTkFrame):
             text_color=cfg.COLOR_LIME,
             font=cfg.FONT_LARGE
         )
-        self.message_lbl.place(relx=0.5, rely=0.5, anchor='c')
+        self.message_lbl.place(
+            relx=0.5, rely=0.5, anchor='c'
+        )
 
     def change_message(self, stage):
         self.message_lbl.configure(
@@ -178,30 +210,23 @@ class MessagePage(ctk.CTkFrame):
 class MainLogic:
     def __init__(self):
         self.index = 0
-        self.step = 1
         self.score = 0
 
-    def give_feedback(self, info, user_choice):
-        if info == 'next':
-            right_answer = cfg.GAME_DATA[self.index]['right_answer']
-            if user_choice == right_answer:
-                status = 'right'
-                self.score += 1
-            else:
-                status = 'wrong'
-
-            self.index += 1
-            self.step += 1
-            #if self.index == len(cfg.GAME_DATA):
-            #    return 'game_over', self.index, self.step, self.score
-            return status, self.index, self.step, self.score
+    def give_data(self, user_choice):
+        part = cfg.GAME_DATA[self.index]
+        right_answer = part['right_answer']
+        if user_choice == right_answer:
+            status = 'right'
+            self.score += 1
+        else:
+            status = 'wrong'
+        self.index += 1
+        return status, self.index, self.score
 
     def update_variables(self):
         self.index = 0
-        self.step = 1
         self.score = 0
-        return 'repeat', self.index, self.step, self.score
-
+        return self.index, self.score
 
 
 class MainApp(ctk.CTk):
@@ -214,7 +239,9 @@ class MainApp(ctk.CTk):
         self.attributes('-alpha', 0.9)
 
         self.main_frame = ctk.CTkFrame(self)
-        self.main_frame.pack(fill = 'both', expand = True)
+        self.main_frame.pack(
+            fill = 'both', expand = True
+        )
         self.logic = MainLogic()
 
         self.pages = {}
@@ -241,33 +268,37 @@ class MainApp(ctk.CTk):
         self.current_frame = self.pages[page_name]
         self.current_frame.pack(fill="both", expand=True)
 
-    def handle_info(self, page, info, user_choice=None):
+    def handle_info(self, page, info):
         go_to_rules = partial(self.switch_to, 'RulesPage')
 
         router = {
             ('GreetingsPage', 'exit'):  self.exit_app,
             ('GreetingsPage', 'next'):  go_to_rules,
             ('RulesPage', 'exit'):      self.exit_app,
-            ('RulesPage', 'start'):     self.start_app
+            ('RulesPage', 'start'):     self.start_app,
+            ('FinalPage', 'exit'):      self.exit_app,
+            ('FinalPage', 'start'):     self.start_app
         }
 
         if method := router.get((page, info)):
             return method()
-        self.transfer_data(info, user_choice)
+        self.transfer_data(info)
 
-    def transfer_data(self, info, user_choice):
-        status, index, step, score = self.logic.give_feedback(info, user_choice)
-        if index == 5:
-            self.pages['QuizPage'].show_verdict(status, index)
+    def transfer_data(self, info):
+        status, index, score  = self.logic.give_data(info)
+        q_page = self.pages['QuizPage']
+        if index == len(cfg.GAME_DATA):
+            q_page.show_feedback(status, index)
+            self.pages['FinalPage'].change_message(score)
             self.after(
                 3000,
                 lambda: self.switch_to('FinalPage')
             )
         else:
-            self.pages['QuizPage'].show_verdict(status, index)
+            q_page.show_feedback(status, index)
             self.after(
                 3000,
-                lambda: self.pages['QuizPage'].update_ui(status, index, step, score)
+                lambda: q_page.show_next_question(index, score)
             )
 
     def exit_app(self):
@@ -278,8 +309,8 @@ class MainApp(ctk.CTk):
     def start_app(self):
         self.pages["MessagePage"].change_message('loading')
         self.switch_to("MessagePage")
-        status, index, step, score = self.logic.update_variables()
-        self.pages['QuizPage'].update_ui(status, index, step, score)
+        index, score = self.logic.update_variables()
+        self.pages['QuizPage'].show_next_question(index, score)
         self.after(3000, lambda: self.switch_to("QuizPage"))
 
 
