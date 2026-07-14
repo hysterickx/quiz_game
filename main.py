@@ -82,11 +82,11 @@ class QuizPage(ctk.CTkFrame):
         for widget in range(3):
             box = ctk.CTkRadioButton(
                 frames['answer_frm'],
-                variable = self.choice_var,
+                variable=self.choice_var,
                 value=widget,
                 **cfg.BOX_PARAMS,
             )
-            box.pack(pady = 10, anchor='c')
+            box.pack(pady=10, anchor='c')
             self.boxes.append(box)
 
         self.button = ctk.CTkButton(
@@ -106,8 +106,9 @@ class QuizPage(ctk.CTkFrame):
 
         part = cfg.GAME_DATA[index-1]
         answer = part['answers'][part['right_answer']]
+        comment = choice(cfg.GAME_MESSAGES[status])
         self.labels['comment_lbl'].configure(
-            text=f'{choice(cfg.GAME_MESSAGES[status])} {answer}'
+            text=f'{comment} {answer}'
         )
 
         for box in self.boxes:
@@ -119,6 +120,7 @@ class QuizPage(ctk.CTkFrame):
             fg_color=cfg.COLOR_RED,
             border_width_unchecked=5
         )
+
         right_box = self.boxes[part['right_answer']]
         right_box.configure(
             border_color=cfg.COLOR_LIME,
@@ -130,21 +132,27 @@ class QuizPage(ctk.CTkFrame):
         self.labels['step_lbl'].configure(
             text=f'Вопрос номер: {index+1}'
         )
+
         self.labels['score_lbl'].configure(
             text=f'Твои баллы: {score}'
         )
+
+        question = cfg.GAME_DATA[index]['question']
         self.question_lbl.configure(
-            text=cfg.GAME_DATA[index]['question']
+            text=question
         )
+
         self.labels['comment_lbl'].configure(text='')
-        answers_list = cfg.GAME_DATA[index]['answers']
+
+        answers = cfg.GAME_DATA[index]['answers']
         for idx, box in enumerate(self.boxes):
             box.configure(
-                text=answers_list[idx],
+                text=answers[idx],
                 state='normal',
                 **cfg.BOX_PARAMS
             )
         self.choice_var.set(0)
+
         self.button.place(relx=0.5, rely=0.9, anchor='c')
 
 
@@ -193,7 +201,6 @@ class MessagePage(ctk.CTkFrame):
 
         self.message_lbl = ctk.CTkLabel(
             self,
-            text='',
             text_color=cfg.COLOR_LIME,
             font=cfg.FONT_LARGE
         )
@@ -202,9 +209,8 @@ class MessagePage(ctk.CTkFrame):
         )
 
     def change_message(self, stage):
-        self.message_lbl.configure(
-            text=choice(cfg.DELAY_MESSAGES[stage])
-        )
+        message = choice(cfg.DELAY_MESSAGES[stage])
+        self.message_lbl.configure(text=message)
 
 
 class MainLogic:
@@ -212,7 +218,7 @@ class MainLogic:
         self.index = 0
         self.score = 0
 
-    def give_data(self, user_choice):
+    def handle_choice(self, user_choice):
         part = cfg.GAME_DATA[self.index]
         right_answer = part['right_answer']
         if user_choice == right_answer:
@@ -240,7 +246,7 @@ class MainApp(ctk.CTk):
 
         self.main_frame = ctk.CTkFrame(self)
         self.main_frame.pack(
-            fill = 'both', expand = True
+            fill='both', expand=True
         )
         self.logic = MainLogic()
 
@@ -285,7 +291,8 @@ class MainApp(ctk.CTk):
         self.transfer_data(info)
 
     def transfer_data(self, info):
-        status, index, score  = self.logic.give_data(info)
+        status, index, score  = self.logic.handle_choice(info)
+
         q_page = self.pages['QuizPage']
         if index == len(cfg.GAME_DATA):
             q_page.show_feedback(status, index)
