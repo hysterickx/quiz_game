@@ -1,4 +1,4 @@
-# My Quiz Game (Моя Викторина)
+# My Quiz Game
 
 A modern, desktop-based quiz application built with Python using Object-Oriented Programming (OOP) principles and a sleek CustomTkinter graphical user interface. 
 
@@ -51,7 +51,7 @@ pip install customtkinter
 
 2. **Run the application:**
    ```bash
-   python main.py
+   python draft.py
    ```
 
 ## 🎮 How to Play
